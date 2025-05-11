@@ -1,11 +1,9 @@
 from dataclasses import dataclass
 from typing import Tuple, List, Optional
 
+import cv2
 import numpy as np
 from skimage import io, color
-
-
-@staticmethod
 def hex_to_rgb(hex_code: str) -> Tuple[int, int, int]:
     """
         Convert hex code to RGB tuple.
@@ -52,7 +50,83 @@ def lab_image_to_rgb(lab_image: np.ndarray) -> np.ndarray:
     rgb_image = (rgb_image * 255).astype(np.uint8)
     return rgb_image
 
+def bgr_to_rgb(bgr: tuple) -> tuple:
+    """
+        Convert BGR tuple to RGB tuple.
+    """
+    b, g, r = bgr
+    return r, g, b
 
+
+
+
+
+def compare_ref_photo_swatches(ref_swatches, photo_swatches, corrected_swatches):
+    """
+    Visualize reference and photo swatches in a horizontal comparison with borders and labels.
+    :param ref_swatches: List of reference color swatches
+    :param photo_swatches: List of photo color swatches
+    :return: Combined image showing swatches horizontally with borders and labels
+    """
+    # Constants
+    swatch_height = 60
+    swatch_width = 60
+    border_thickness = 1
+    padding = 1
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.3
+    font_thickness = 1
+
+    # Calculate image dimensions
+    max_swatches = max(len(ref_swatches), len(photo_swatches))
+    image_width = (swatch_width + padding) * max_swatches + padding * 2 + 100
+    image_height = swatch_height * 2 + padding * 4 + 200 # Extra space for labels
+
+    # Create blank image with white background
+    combined_image = np.ones((image_height, image_width, 3), dtype=np.uint8) * 255
+
+    # Draw photo swatches with borders (bottom row)
+    for i, color in enumerate(photo_swatches):
+        x_start = padding + i * (swatch_width + padding)
+        x_end = x_start + swatch_width
+
+        # Position in bottom half of image
+        y_start = 40
+        y_end = y_start + swatch_height
+
+        # Draw border
+        cv2.rectangle(combined_image, (x_start, y_start), (x_end, y_end),
+                      (0, 0, 0), border_thickness)
+
+        # Draw color block
+        cv2.rectangle(combined_image,
+                      (x_start + border_thickness, y_start + border_thickness),
+                      (x_end - border_thickness, y_end - border_thickness),
+                      color, -1)
+
+    # Draw reference swatches with borders (top row)
+    for i, swatch in enumerate(ref_swatches):
+        x_start = padding + i * (swatch_width + padding)
+        x_end = x_start + swatch_width
+
+        # Position in top half of image
+        y_start = swatch_height + padding
+        y_end = y_start + swatch_height
+
+        # Draw border
+        cv2.rectangle(combined_image, (x_start, y_start), (x_end, y_end),
+                      (0, 0, 0), border_thickness)
+
+        # Draw color block
+        color = tuple(map(int, swatch.rgb))
+        cv2.rectangle(combined_image,
+                      (x_start + border_thickness, y_start + border_thickness),
+                      (x_end - border_thickness, y_end - border_thickness),
+                      color, -1)
+
+
+
+    return combined_image
 
 class ColorSwatch:
     name: str
@@ -65,7 +139,6 @@ class ColorSwatch:
         self.hex_code = hex_code
         self.rgb = hex_to_rgb(hex_code)
         self.lab = rgb_to_lab(self.rgb)
-
 
 
 class ColorCheckerReference:

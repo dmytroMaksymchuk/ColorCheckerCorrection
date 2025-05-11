@@ -4,7 +4,7 @@ from typing import Optional, List, Tuple, Dict
 from dataclasses import dataclass
 from ultralytics import YOLO
 
-from utils import ColorCheckerReference
+from utils import ColorCheckerReference, compare_ref_photo_swatches, bgr_to_rgb
 from color_correction import ColorCorrection
 
 
@@ -42,7 +42,7 @@ class ColorCheckerDetector:
         self.last_results = self.model.predict(image_path, conf=conf)
         return len(self.last_results[0]) > 0
 
-    def extract_swatches(self, rows: int = 4, cols: int = 6, border: float = 0.02) -> List[ColorCheckerSwatch]:
+    def extract_swatches(self, rows: int = 4, cols: int = 6, border: float = 0.1) -> List[ColorCheckerSwatch]:
         """
         Extract color swatches from detected color checker.
 
@@ -150,17 +150,35 @@ class ColorCheckerDetector:
 # Example usage
 if __name__ == "__main__":
     detector = ColorCheckerDetector("colour-checker-detection-l-seg.pt")
-    detector.detect("photos/card_3.jpg")
+    detector.detect("photos/small_leaves.jpg")
     if detector.last_results is not None:
         swatches = detector.extract_swatches()
         print(f"Detected {len(swatches)} color swatches")
         # detector.visualize()
 
+    photo_swatch_rgb = [bgr_to_rgb(swatch.color) for swatch in detector.swatches]
     reference = ColorCheckerReference()
-    colorCorrector = ColorCorrection(reference, detector.swatches, "photos/card_3.jpg")
+    compare_image = compare_ref_photo_swatches(reference.get_all(), photo_swatch_rgb)
+
+    # Convert RGB to BGR for OpenCV display
+    compare_image = cv2.cvtColor(compare_image, cv2.COLOR_RGB2BGR)
+    # show in RGB
+    cv2.imshow("Comparison", compare_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    colorCorrector = ColorCorrection(reference, photo_swatch_rgb)
     color_correction_matrix = colorCorrector.get_color_correction_matrix_lab()
-    corrected_image = colorCorrector.apply_color_correction(detector.last_results[0].orig_img, color_correction_matrix)
+
+    # BGR to RGB conversion
+    rgb_image = cv2.cvtColor(detector.last_results[0].orig_img, cv2.COLOR_BGR2RGB)
+    corrected_image = colorCorrector.apply_color_correction(rgb_image, color_correction_matrix)
+
+    # Convert corrected image back to BGR for OpenCV display
+    corrected_image = cv2.cvtColor(corrected_image, cv2.COLOR_RGB2BGR)
+
     cv2.imshow("Corrected Image", corrected_image)
+    cv2.imshow("Original Image", detector.last_results[0].orig_img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
