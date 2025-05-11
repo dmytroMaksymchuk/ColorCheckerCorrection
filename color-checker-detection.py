@@ -4,6 +4,9 @@ from typing import Optional, List, Tuple, Dict
 from dataclasses import dataclass
 from ultralytics import YOLO
 
+from utils import ColorCheckerReference
+from color_correction import ColorCorrection
+
 
 @dataclass
 class ColorCheckerSwatch:
@@ -144,16 +147,21 @@ class ColorCheckerDetector:
         cv2.destroyAllWindows()
 
 
-
-
-
-
 # Example usage
 if __name__ == "__main__":
     detector = ColorCheckerDetector("colour-checker-detection-l-seg.pt")
     detector.detect("photos/card_3.jpg")
-
     if detector.last_results is not None:
         swatches = detector.extract_swatches()
         print(f"Detected {len(swatches)} color swatches")
-        detector.visualize()
+        # detector.visualize()
+
+    reference = ColorCheckerReference()
+    colorCorrector = ColorCorrection(reference, detector.swatches, "photos/card_3.jpg")
+    color_correction_matrix = colorCorrector.get_color_correction_matrix_lab()
+    corrected_image = colorCorrector.apply_color_correction(detector.last_results[0].orig_img, color_correction_matrix)
+    cv2.imshow("Corrected Image", corrected_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+

@@ -1,24 +1,72 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, List, Optional
 
-import cv2
 import numpy as np
+from skimage import io, color
 
 
-@dataclass
+@staticmethod
+def hex_to_rgb(hex_code: str) -> Tuple[int, int, int]:
+    """
+        Convert hex code to RGB tuple.
+        sRGB color space is assumed.
+    """
+    hex_code = hex_code.lstrip("#")
+    r = int(hex_code[0:2], 16)
+    g = int(hex_code[2:4], 16)
+    b = int(hex_code[4:6], 16)
+    return r, g, b
+
+def rgb_to_lab(rgb: tuple) -> tuple:
+    """
+        Convert RGB tuple to CIE Lab color space.
+        sRGB color space is assumed.
+    """
+    # Normalize RGB values to [0, 1]
+    r, g, b = [x / 255.0 for x in rgb]
+    rgb_normalized = [[[(r), (g), (b)]]]  # shape (1, 1, 3)
+
+    # Convert to Lab color space
+    lab = color.rgb2lab(rgb_normalized)
+    return tuple(lab[0][0])
+
+def rgb_image_to_lab(image: np.ndarray) -> np.ndarray:
+    """
+        Convert an RGB image to CIE Lab color space.
+    """
+    # Normalize RGB values to [0, 1]
+    rgb_normalized = image / 255.0
+
+    # Convert to Lab color space
+    lab_image = color.rgb2lab(rgb_normalized)
+    return lab_image
+
+def lab_image_to_rgb(lab_image: np.ndarray) -> np.ndarray:
+    """
+        Convert a CIE Lab image to RGB color space.
+    """
+    # Convert to RGB color space
+    rgb_image = color.lab2rgb(lab_image)
+
+    # Scale back to [0, 255]
+    rgb_image = (rgb_image * 255).astype(np.uint8)
+    return rgb_image
+
+
+
 class ColorSwatch:
     name: str
     hex_code: str
+    rgb: tuple[int, int, int]
+    lab: tuple
 
-    def to_rgb(self) -> tuple[int, int, int]:
-        """Convert hex code to RGB tuple."""
-        hex_code = self.hex_code.lstrip("#")
-        r = int(hex_code[0:2], 16)
-        g = int(hex_code[2:4], 16)
-        b = int(hex_code[4:6], 16)
-        return r, g, b
+    def __init__(self, name: str, hex_code: str):
+        self.name = name
+        self.hex_code = hex_code
+        self.rgb = hex_to_rgb(hex_code)
+        self.lab = rgb_to_lab(self.rgb)
 
-    def to_lab(self)
+
 
 class ColorCheckerReference:
     """Manages the standard ColorChecker reference swatches."""
